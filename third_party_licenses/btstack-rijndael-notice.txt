@@ -1,0 +1,4 @@
+//=============================== RIJNDAEL.C   ===============================
+// from http://www.efgh.com/software/rijndael.htm,
+// License: Public Domain, 
+// Author:  Philip J. Erdelsky
