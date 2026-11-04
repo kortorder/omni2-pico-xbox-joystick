@@ -1,5 +1,7 @@
 # Omni2 Mouse 2 to Xbox Adaptive Controller
 
+[Download the complete joystick bridge and Mac editor source ZIP](https://github.com/kortorder/omni2-pico-xbox-joystick/raw/refs/heads/main/omni2-pico-xbox-joystick-source.zip). Extract it before following the setup steps below.
+
 Use the Bluetooth **Mouse 2** mode of a Permobil Omni2 as a right stick for games. A Raspberry Pi Pico W receives relative mouse motion over Bluetooth Classic and presents a USB joystick to the **right USB port** of an Xbox Adaptive Controller (XAC). A gentle hold turns the camera. Quick chair clicks or scroll nudges can tap any of twelve USB button positions. The mappings are saved on the Pico.
 
 The chair supplies ordinary Bluetooth mouse input. This project does not control chair movement, change drive programming, or connect to wheelchair wiring. No phone, app account or Wi-Fi password is required. This is a source project. Each operator builds an image for their own Pico and USB identity.
@@ -23,18 +25,18 @@ Start with the standard **strict** image. It requires an encrypted Bluetooth lin
    export PICO_SDK_PATH="$HOME/pico-sdk-2.3.1"
    ```
 
-2. From this repository, run `./scripts/check.sh` for the host checks. Then build **one** of the following ways.
+2. From this repository, run `bash scripts/check.sh` for the host checks. Then build **one** of the following ways.
 
    **Private, in-house bench testing** can use the shared test USB identity by explicitly selecting it.
 
    ```sh
-   ./scripts/build.sh "$HOME/omni-local-build/strict" -DOMNI_USE_PRIVATE_TEST_ID=ON
+   bash scripts/build.sh "$HOME/omni-local-build/strict" -DOMNI_USE_PRIVATE_TEST_ID=ON
    ```
 
    **Hardware to distribute, manufacture or sell** requires an appropriate assigned VID/PID. Provide your allocated four-digit hexadecimal values in both the firmware and Mac tools. The allocator limits `1209:0002` to in-house test devices. Other devices can use that same identity. [pid.codes assignment and restrictions](https://pid.codes/1209/0002/)
 
    ```sh
-   ./scripts/build.sh "$HOME/omni-local-build/strict-assigned" \
+   bash scripts/build.sh "$HOME/omni-local-build/strict-assigned" \
      -DOMNI_USB_VID="0x${YOUR_ASSIGNED_VID}" -DOMNI_USB_PID="0x${YOUR_ASSIGNED_PID}"
    ```
 
