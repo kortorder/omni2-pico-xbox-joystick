@@ -11,6 +11,9 @@
 #include "pico/bootrom.h"
 #include "pico/stdlib.h"
 #include "tusb.h"
+#if OMNI_PHONE_RELAY
+#include "omni_phone_wifi.hpp"
+#endif
 
 namespace {
 using namespace omni::maintenance;
@@ -21,6 +24,7 @@ enum class Gate {
     enter_pending,
     private_read_pending,
     settings_read_pending,
+    wifi_read_pending,
     settings_receive,
     settings_validated,
     requested,
@@ -31,6 +35,7 @@ Gate gate = Gate::idle;
 std::uint64_t changed_at = 0;
 constexpr std::uint64_t window_us = 3'000'000;
 auto probe_data = capability;
+WifiReply wifi_data{};
 #if OMNI_CAPTURE_SHORT_KEY
 CaptureReply capture_data{};
 #elif OMNI_SHORT_KEY_COMPAT
@@ -49,6 +54,7 @@ bool recent(std::uint64_t now, std::uint64_t duration) {
 }
 bool committed() { return gate == Gate::requested || gate == Gate::centering || gate == Gate::detached; }
 void end_control() {
+    wifi_data.fill(0);
 #if OMNI_CAPTURE_SHORT_KEY
     capture_data.fill(0);
 #elif OMNI_SHORT_KEY_COMPAT
@@ -81,6 +87,8 @@ extern "C" bool tud_vendor_control_xfer_cb(std::uint8_t port, std::uint8_t stage
                        request->bRequest == probe_request && request->wLength == capability.size();
     const bool enter = signature && request->bmRequestType == enter_type &&
                        request->bRequest == enter_request && request->wLength == 0;
+    const bool wifi_read = signature && request->bmRequestType == probe_type &&
+                           request->bRequest == wifi_read_request && request->wLength == wifi_data.size();
 #if OMNI_CAPTURE_SHORT_KEY
     const bool private_read = signature && request->bmRequestType == probe_type &&
                               request->bRequest == capture_request &&
@@ -102,6 +110,16 @@ extern "C" bool tud_vendor_control_xfer_cb(std::uint8_t port, std::uint8_t stage
     if (stage == CONTROL_STAGE_SETUP) {
         const bool armed = gate == Gate::armed && recent(now, window_us);
         gate = Gate::idle;
+        if (wifi_read && armed) {
+#if OMNI_PHONE_RELAY
+            wifi_data = omni::phone_wifi_status();
+#else
+            wifi_data = {1, 0, 0, 0};
+#endif
+            if (!tud_control_xfer(port, request, wifi_data.data(), wifi_data.size())) return false;
+            gate = Gate::wifi_read_pending;
+            return true;
+        }
 #if OMNI_CAPTURE_SHORT_KEY
         capture_data.fill(0);
         if (private_read && armed) {
@@ -163,6 +181,10 @@ extern "C" bool tud_vendor_control_xfer_cb(std::uint8_t port, std::uint8_t stage
     if (!recent(now, window_us)) {
         omni::maintenance_usb_reset();
         return false;
+    }
+    if (wifi_read && gate == Gate::wifi_read_pending) {
+        if (stage == CONTROL_STAGE_DATA) return true;
+        if (stage == CONTROL_STAGE_ACK) { end_control(); return true; }
     }
 #if OMNI_CAPTURE_SHORT_KEY || OMNI_SHORT_KEY_COMPAT
     if (private_read && gate == Gate::private_read_pending) {
@@ -249,6 +271,7 @@ bool omni::maintenance_poll(StickMapper &mapper, std::uint64_t now) {
         return false;
     if (gate == Gate::requested) {
         mapper.disconnect();
+        usb_request_neutral(mapper); // Maintenance always retires every input source.
         gate = Gate::centering;
         changed_at = now;
     }

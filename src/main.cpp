@@ -8,6 +8,9 @@
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
 #include "tusb.h"
+#if OMNI_PHONE_RELAY
+#include "omni_phone_wifi.hpp"
+#endif
 
 namespace {
 omni::StickMapper stick;
@@ -62,7 +65,12 @@ int main() {
     // inside cyw43_arch_poll, so the USB sample sees a consistent mouse state.
     if (!tusb_init())
         return 1;
+#if OMNI_PHONE_RELAY
+    const bool radio_ready = omni::phone_wifi_radio_init() == 0;
+    if (radio_ready) omni::phone_wifi_start();
+#else
     const bool radio_ready = cyw43_arch_init() == 0;
+#endif
 #if !OMNI_CAPTURE_SHORT_KEY
     // cyw43_arch_init sets up BTstack's flash TLV before HCI power-on.
     if (radio_ready)
@@ -78,8 +86,16 @@ int main() {
             sleep_us(500);
             continue;
         }
-        if (host_ready) {
+#if OMNI_PHONE_RELAY
+        if (radio_ready) {
             cyw43_arch_poll();
+            omni::phone_wifi_poll(time_us_64());
+        }
+#endif
+        if (host_ready) {
+#if !OMNI_PHONE_RELAY
+            cyw43_arch_poll();
+#endif
             omni::bt_tick(time_us_64() / 1000);
             omni::poll_pair_button(time_us_64() / 1000);
         }

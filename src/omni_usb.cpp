@@ -1,5 +1,9 @@
 #include "omni_usb.hpp"
 #include "omni_maintenance.hpp"
+#if OMNI_PHONE_RELAY
+#include "omni_phone_relay.hpp"
+#include "pico/stdlib.h"
+#endif
 #include "tusb.h"
 #include <algorithm>
 #include <array>
@@ -97,8 +101,15 @@ struct Stream {
     bool detached = false, awaiting_mount = false;
     std::uint32_t source_generation = 0, epoch = 0, inflight_epoch = 0;
     std::uint64_t sent_at = 0, release_at = 0, detached_at = 0;
+#if OMNI_PHONE_RELAY
+    std::uint64_t relay_ticket = 0;
+#endif
     Report desired{}, inflight{}, completed{};
     void barrier(bool reset_usb) {
+#if OMNI_PHONE_RELAY
+        if (auto *relay = phone_relay()) relay->reset(time_us_64());
+        relay_ticket = 0;
+#endif
         ++epoch;
         require_neutral = true;
         nudges.reset();
@@ -195,15 +206,34 @@ void omni::usb_status(std::uint8_t state, std::uint32_t count, std::uint8_t pair
 void omni::usb_task(StickMapper &mapper, std::uint64_t now) {
     if (mapper.generation() != stream.source_generation) {
         stream.source_generation = mapper.generation();
+#if OMNI_PHONE_RELAY
+        // Bluetooth loss retires its own source; a healthy phone source survives.
+        nudges.reset();
+#else
         // Keep the slot for a previously submitted transfer until its callback.
         // Its completion cannot satisfy the new connection's neutral barrier.
         stream.barrier(false);
+#endif
     }
-    const auto axes = mapper.sample(now);
+    auto axes = mapper.sample(now);
     const auto buttons = nudges.sample(now);
+#if OMNI_PHONE_RELAY
+    auto *relay = phone_relay();
+    if (relay) {
+        relay->poll(tud_mounted() && !tud_suspended() && !stream.require_neutral &&
+                    !stream.detached && !stream.awaiting_mount, now);
+        const auto phone = relay->source();
+        if (phone != Axes{}) axes = phone;
+    }
+#endif
     stream.desired = pack(axes, axes == Axes{} ? buttons : 0);
     stream.preserve_button_release();
     tud_task_ext(0, false); // Poll without blocking the Bluetooth run loop.
+#if OMNI_PHONE_RELAY
+    now = time_us_64(); // A USB callback may have advanced the relay clock during tud_task_ext.
+    if (relay) relay->poll(tud_mounted() && !tud_suspended() && !stream.require_neutral &&
+                           !stream.detached && !stream.awaiting_mount, now);
+#endif
     if (stream.detached) {
         if (now >= stream.detached_at && now - stream.detached_at >= 250000) {
             stream.detached = false;
@@ -218,9 +248,22 @@ void omni::usb_task(StickMapper &mapper, std::uint64_t now) {
         return;
     if (stream.discard_motion) {
         mapper.clear_motion();
+        axes = {};
         stream.desired = {};
         stream.discard_motion = false;
     }
+#if OMNI_PHONE_RELAY
+    if (relay && !stream.require_neutral) {
+        if (!stream.pending && tud_hid_ready()) relay->prepare(now);
+        axes = mapper.sample(now);
+        const auto phone = relay->source();
+        if (phone != Axes{}) axes = phone;
+        // Phone neutral means hand back to the current physical chair motion.
+        stream.desired = pack(axes, axes == Axes{} ? buttons : 0);
+        stream.preserve_button_release();
+    }
+    const auto relay_ticket = relay && !stream.require_neutral ? relay->pending_ticket() : 0;
+#endif
     if (stream.needs_recovery(now)) {
         // Endpoint completion was lost or hardware stayed busy after motion.
         // Drop the RP2040 D+ pull-up so the host can observe device removal.
@@ -235,6 +278,9 @@ void omni::usb_task(StickMapper &mapper, std::uint64_t now) {
         return;
     const Report next = stream.require_neutral ? Report{} : stream.desired;
     if (!stream.require_neutral && next == stream.completed && now >= stream.sent_at &&
+#if OMNI_PHONE_RELAY
+        !relay_ticket &&
+#endif
         now - stream.sent_at < 40000)
         return;
     // TinyUSB copies this report into its interrupt transfer buffer synchronously.
@@ -244,6 +290,10 @@ void omni::usb_task(StickMapper &mapper, std::uint64_t now) {
         stream.pending = true;
         stream.inflight_epoch = stream.epoch;
         stream.sent_at = now;
+#if OMNI_PHONE_RELAY
+        stream.relay_ticket = relay_ticket;
+        if (relay && relay_ticket) relay->submitted(relay_ticket);
+#endif
         if (next != Report{})
             stream.may_be_nonzero = true;
     }
@@ -316,6 +366,11 @@ extern "C" void tud_hid_report_complete_cb(std::uint8_t instance, const std::uin
         stream.may_be_nonzero = false;
         stream.timing_release = false;
     }
+#if OMNI_PHONE_RELAY
+    if (auto *relay = phone_relay(); relay && stream.relay_ticket)
+        relay->complete(stream.relay_ticket, true, time_us_64());
+    stream.relay_ticket = 0;
+#endif
 }
 extern "C" void tud_hid_report_failed_cb(std::uint8_t instance, hid_report_type_t type,
                                          const std::uint8_t *, std::uint16_t) {
