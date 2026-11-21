@@ -1,0 +1,63 @@
+Host verification on November21,2026
+
+These tests used synthetic I/O on a Mac. No Pico was flashed and no console input was sent. They do not establish electrical safety, radio latency or a new physical Xbox/PlayStation acceptance result. Existing physical evidence and remaining hardware checks are described in README.md.
+
+31 slot/name/descriptor/report assertions passed
+14 Bluetooth host assertions passed (pair)
+8 Bluetooth host assertions passed (inbound)
+3 Bluetooth host assertions passed (missing)
+4 Bluetooth host assertions passed (window)
+7 Bluetooth host assertions passed (timeout)
+14 Bluetooth host assertions passed (diagnostic)
+5 Bluetooth host assertions passed (diagnostic_timeout)
+6 Bluetooth host assertions passed (security_status)
+6 Bluetooth host assertions passed (key_length)
+13 Bluetooth host assertions passed (provisional)
+8 Bluetooth host assertions passed (expiry)
+8 Bluetooth host assertions passed (forget_provisional)
+7 Bluetooth host assertions passed (bad_descriptor)
+2 Bluetooth host assertions passed (interrupted)
+4 Bluetooth host assertions passed (promotion_interrupted)
+9 Bluetooth host assertions passed (capture)
+9 Bluetooth host assertions passed (badcapture)
+6 Bluetooth host assertions passed (strict_floor)
+2 Bluetooth host assertions passed (telemetry_unavailable)
+9 Bluetooth host assertions passed (capture)
+9 Bluetooth host assertions passed (badcapture)
+10 Bluetooth host assertions passed (capture_reset)
+9 Bluetooth host assertions passed (capture_dead_acl)
+6 Bluetooth host assertions passed (strict_floor)
+2 Bluetooth host assertions passed (telemetry_unavailable)
+14 Bluetooth host assertions passed (pinned)
+12 Bluetooth host assertions passed (pinned_weak)
+12 Bluetooth host assertions passed (pinned_debug)
+14 Bluetooth host assertions passed (pinned_saved)
+9 Bluetooth host assertions passed (capture)
+9 Bluetooth host assertions passed (badcapture)
+21 Bluetooth host assertions passed (telemetry)
+10 Bluetooth host assertions passed (telemetry_security)
+10 Bluetooth host assertions passed (telemetry_framing)
+PASS: 71 Omni mouse-to-stick, USB joystick descriptor, transfer and diagnostic checks.
+PASS: 71 Omni mouse-to-stick, USB joystick descriptor, transfer and diagnostic checks.
+PASS: 59 nudge recognition, mapping, lifecycle and USB release checks.
+PASS 94 settings storage/codec assertions
+Firmware mode: standard
+PASS: 210 wired maintenance firmware checks. No physical USB or reboot.
+Firmware mode: capture
+PASS: 151 wired maintenance firmware checks. No physical USB or reboot.
+Firmware mode: pinned
+PASS: 228 wired maintenance firmware checks. No physical USB or reboot.
+Replaying firmware loop with OMNI_SHORT_KEY_COMPAT=0
+PASS: full polling-loop replay: 4 single taps (B, RB, X, RS), fine aim and center, mixed-motion veto, disconnect cleanup.
+Replaying firmware loop with OMNI_SHORT_KEY_COMPAT=1
+PASS: full polling-loop replay: 4 single taps (B, RB, X, RS), fine aim and center, mixed-motion veto, disconnect cleanup.
+PASS: 167 optional relay/real USB adapter checks
+PASS: 84 optional relay production-loop checks
+PASS: 84 optional relay production-loop checks
+PASS: 26 production Wi-Fi adapter checks (including pbuf address lifetime)
+PASS: 5 low-latency configuration failure checks
+....
+----------------------------------------------------------------------
+Ran 4 tests in 0.019s
+
+OK
