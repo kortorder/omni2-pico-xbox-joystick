@@ -1,0 +1,75 @@
+{
+  "version": "0.1.6",
+  "date": "2026-11-08",
+  "production_files_sha256": {
+    "CMakeLists.txt": "c5d7e9ce4814d2e943d5a52010ecbf3a9b8f1edb06c466e0649dbb2ce02b5521",
+    "cmake/private_peer.py": "05a38562bacdf82b7ef8c7ee6f1da674d5a481bfe4045897b7d8e302e5c51d52",
+    "src/btstack_config.h": "0a70da0049ddebd241b80da070d2e6534a4d41de966c659a55b61214e604aee2",
+    "src/lwipopts.h": "043df19ad9210debf3da8ab9a6ad08a5ff663825fa2e86048f38b6d600479982",
+    "src/main.cpp": "733a6e3a42723b0ab7f001965629bb089e198b7f950cf24fa8f42608aa137e94",
+    "src/omni_bluetooth.cpp": "981a2b43841c030648c3ddb44446a7b9a2269b329b11adab5367b7e4bbe4c6a4",
+    "src/omni_bluetooth.hpp": "59b22ae38e81f1ab905803050e8bf21948afe64d829cbb308eca9e50832d5515",
+    "src/omni_maintenance.cpp": "c53c13f1bf362a3f0d86b42c3b2bcb4cf58e75412af312acdc6b6712fb8f9e39",
+    "src/omni_maintenance.hpp": "210b9c007b5146b6ad058530b03094aa085360d4027a461f8e4c393d8b87dca3",
+    "src/omni_motion_counters.hpp": "f4be6cb4fa7cd6fd2bbf22eca1025ad8bbbde627d917fb3ca236aa7cc416ef5f",
+    "src/omni_mouse_report.cpp": "fb3a26740bde3b2050eb3bd50c1e134055aac6291a6a5652d3a665d4c5cd122d",
+    "src/omni_mouse_report.hpp": "add0dc0aae388a7fdb0758200cd6c855c460f261131f732cdcd509367c04d49c",
+    "src/omni_nudge_settings.cpp": "550590624038568b7cf4c1c1a32643c7892008bb4c60fa81ac512b7fa23ecaf6",
+    "src/omni_nudge_settings.hpp": "50fbfc5ca74a170da5c4ac3b3e851625c8c6632ffce9bca83889ab92c3ed39ef",
+    "src/omni_nudges.cpp": "49fd6d86dd86c9e276ff38828627105736483aedfca38a8a67a7b67c741129c8",
+    "src/omni_nudges.hpp": "20ef6a6cf58e3dbfe0eb280dd16362234fdd99e06cde8226637e39561e79cdd7",
+    "src/omni_phone_relay.cpp": "cc4d1112d20ce64474567da7c0a6f6c3bbec7be1fea2f4220bb96c5329c9fc04",
+    "src/omni_phone_relay.hpp": "74cc47b72585c939052a276aeeb99e5e0d2d9aca45d29d6e3036b571bcd3c85a",
+    "src/omni_phone_wifi.cpp": "f07b15418ee0e20bf1c63d26395a5cba6e6be7e151892a93581fb3ffa21db83a",
+    "src/omni_phone_wifi.hpp": "971ff6917f3353782168ff4da1d621c94efa43105a161690cb94d82228628e00",
+    "src/omni_stick.cpp": "327c5d6bd75bef242fe0adebb1309417ddebd3d6e0655df3b91fecce00d4e5ea",
+    "src/omni_stick.hpp": "8ae330292b20a66f2b931bb06f50ec2da110d300acf29bcca72b5c3de46758d6",
+    "src/omni_usb.cpp": "cd2a16846be9a4a76cfd58fa7e0430c030e1c52d38aa0a382c5b63a05a9a3c52",
+    "src/omni_usb.hpp": "62a35b870ed765f18299327a3b131d285b577f41952c4136c67c50d7b7bbc267",
+    "src/pair_button.cpp": "038ff7ab20b878a3429faeead71b5964f7608184281990c237b3935a34ac506a",
+    "src/pair_button.hpp": "ca581b79a9e8238c38a645c06a8381a8576169bb5838ebd652fb80f0675aaca0",
+    "src/relay_protocol/scx2.cpp": "5e794b5ca4d8353498c669c66e682ccd9df0cd1ed71759306ffe9c52065fa0d7",
+    "src/relay_protocol/scx2.hpp": "7c56807c4f23eb2e359cc6d2d0e2caf2f20f93ecc47e25cb7fd033d7abe43187",
+    "src/relay_protocol/trigger_output.hpp": "6303b8f133d497efc1a9896f9e02a2e8551787dd226e520c8959a5988774c1da",
+    "src/tusb_config.h": "97c088f0e2af365010be6d95619b67fe2566a6aaf55e8490e34e2af37f982b0d"
+  },
+  "checks": {
+    "existing_host_suite": "passed, including strict/capture/pinned Bluetooth and maintenance paths",
+    "real_usb_adapter": 167,
+    "production_loop_strict": 84,
+    "production_loop_compatibility": 84,
+    "production_wifi_adapter": 26,
+    "mac_maintenance_cli": 278,
+    "sanitizers": [
+      "AddressSanitizer",
+      "UndefinedBehaviorSanitizer"
+    ],
+    "sdk": "2.3.1",
+    "crossbuilds": {
+      "default": {
+        "status": "passed",
+        "uf2_end": "0x10058e00",
+        "bss_bytes": 15924
+      },
+      "relay_strict": {
+        "status": "passed",
+        "uf2_end": "0x10063700",
+        "bss_bytes": 46252
+      },
+      "relay_pinned_synthetic_peer": {
+        "status": "passed",
+        "uf2_end": "0x10063e00",
+        "bss_bytes": 46380
+      }
+    },
+    "reserved_tlv_boundary": "0x101fe000",
+    "wifi_pm_failure": 5,
+    "wifi_pm_policy": "CYW43_NONE_PM after STA enabled, before join; failure leaves relay unavailable; optional relay only"
+  },
+  "private_build_test_inputs": "Synthetic non-network credentials and synthetic peer; not installable user configuration",
+  "hardware_tested": false,
+  "limitations": [
+    "Actual Wi-Fi/Bluetooth coexistence and XAC handoff require hardware acceptance",
+    "Phone relay IP is pinned in phone private build; DHCP address changes require configuration refresh"
+  ]
+}

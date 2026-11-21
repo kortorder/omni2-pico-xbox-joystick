@@ -21,6 +21,7 @@ bool mounted = true, suspended = false, accept = true;
 std::uint64_t clock_us = 100;
 std::array<std::uint8_t, 8> answer{};
 MotionReply motion_answer{};
+WifiReply wifi_answer{};
 omni::NudgeSettingsWire readback{},
     host_packet{'N', 'G', 'W', '1', 0, 0, 0, 0, 0, 12, 5, 3, 'S', 'A', 'V', 'E'}, stored{};
 unsigned stored_length = 0, flash_writes = 0, host_bytes = 16;
@@ -38,6 +39,7 @@ const tusb_control_request_t probe = {probe_type, probe_request, request_value, 
 const tusb_control_request_t enter = {enter_type, enter_request, request_value, request_index, 0};
 const tusb_control_request_t motion = {probe_type, motion_request, request_value, request_index, 64};
 const tusb_control_request_t capture = {probe_type, capture_request, request_value, request_index, 8};
+const tusb_control_request_t wifi = {probe_type, wifi_read_request, request_value, request_index, 12};
 #if OMNI_CAPTURE_SHORT_KEY
 bool candidate_available = false;
 // Synthetic byte order only. The real Bluetooth host separately tests authentication and expiry.
@@ -105,11 +107,13 @@ uint64_t time_us_64() { return clock_us; }
 extern "C" bool tud_mounted() { return mounted; }
 extern "C" bool tud_suspended() { return suspended; }
 extern "C" bool tud_control_xfer(uint8_t, const tusb_control_request_t *req, void *p, uint16_t n) {
-    if (!accept || (n != 8 && n != 16 && n != 64) || !p)
+    if (!accept || (n != 8 && n != 12 && n != 16 && n != 64) || !p)
         return false;
     ++request_count;
     if (n == 64)
         std::memcpy(motion_answer.data(), p, n);
+    else if (n == 12)
+        std::memcpy(wifi_answer.data(), p, n);
     else if (n == 16 && req->bmRequestType == probe_type)
         std::memcpy(readback.data(), p, n);
     else if (n == 16)
@@ -137,6 +141,12 @@ int main() {
     omni::StickMapper mapper;
     tud_mount_cb();
     omni::nudge_settings_init();
+    check(!send(CONTROL_STAGE_SETUP, wifi), "Wi-Fi status requires fresh probe");
+    probe_ok();
+    check(send(CONTROL_STAGE_SETUP, wifi) && send(CONTROL_STAGE_DATA, wifi) && send(CONTROL_STAGE_ACK, wifi),
+          "read-only Wi-Fi status completes");
+    check(wifi_answer == WifiReply{1,0,0,0}, "default image reports relay disabled, no credentials");
+    check(!send(CONTROL_STAGE_SETUP, wifi), "Wi-Fi read consumes probe authorization");
     check(!send(CONTROL_STAGE_SETUP, get_settings) && !send(CONTROL_STAGE_SETUP, set_settings),
           "no settings read/write without probe");
 #if !OMNI_CAPTURE_SHORT_KEY
