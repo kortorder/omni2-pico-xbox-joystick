@@ -4,7 +4,7 @@
 
 Use the Bluetooth **Mouse 2** mode of a Permobil Omni2 as a right stick for games. A Raspberry Pi Pico W receives relative mouse motion over Bluetooth Classic and presents a USB joystick to the **right USB port** of an Xbox Adaptive Controller (XAC). A gentle hold turns the camera. Quick chair clicks or scroll nudges can tap any of twelve USB button positions. The mappings are saved on the Pico.
 
-The chair supplies ordinary Bluetooth mouse input. This project does not control chair movement, change drive programming, or connect to wheelchair wiring. No phone, app account or Wi-Fi password is required. This is a source project. Each operator builds an image for their own Pico and USB identity.
+The chair supplies ordinary Bluetooth mouse input. This project does not control chair movement, change drive programming, or connect to wheelchair wiring. The standard Bluetooth-only build requires no phone, app account or Wi-Fi password. The optional shared-stick relay described below also needs private Wi-Fi configuration. This is a source project. Each operator builds an image for their own Pico and USB identity.
 
 ## What you need
 
@@ -79,3 +79,54 @@ A chair that demonstrably negotiates **seven** encryption-key bytes cannot pass 
 The staged firmware was built for RP2040 and its host tests exercise descriptor parsing, peer selection, security refusal, stored bonds, USB neutralization, direction mapping, nudge timing and settings. Both the normal strict and single-peer operating configurations run the complete polling-loop fixture for four nudge mappings, fine motion, disconnect and return to center. The predecessor single-peer setup was observed on a Mac with a physical Omni2. The new strict configuration’s nudge behavior was validated with host fixtures. Each new chair, USB identity, XAC and game still needs the wired and console checks above.
 
 The source includes no prebuilt firmware, chair identifiers, bonds or bench captures. Dependency sources come from the external Pico SDK. [Dependency provenance and notices](THIRD_PARTY.md)
+## Optional shared right stick (0.1.6)
+
+The ordinary Bluetooth-only firmware remains available and builds by default. An optional
+Wi-Fi receiver lets the phone Pico send its right-stick input to this chair Pico while both
+Picos remain in the Xbox Adaptive Controller's USB ports. The phone Pico stays in the left
+port and this chair Pico stays in the right port. No app layouts or Xbox mappings change.
+
+The phone's right-stick movement takes priority while it is nonzero. When it centers,
+the current wheelchair joystick movement takes over. This does not add the two inputs
+together. Bluetooth loss stops only the chair input; Wi-Fi loss stops only the phone input.
+USB reset, suspend, maintenance and endpoint failures retire both sources. Nudge settings
+and Bluetooth pairing remain in the same final 8 KiB of flash, which every firmware build
+now checks it does not overwrite. Existing all-off nudge settings stay off.
+
+This option requires the matching phone Pico relay firmware and a private Wi-Fi header
+outside this source directory defining `SC_WIFI_SSID`, `SC_WIFI_PASSWORD` and
+`SC_WIFI_COUNTRY`. Add `-DOMNI_PHONE_RELAY=ON -DOMNI_WIFI_CONFIG=/absolute/private/config.h`
+to the normal build command; keep the same `OMNI_APPROVED_MOUSE2_FILE` option if this chair
+already needs its approved Mouse 2 compatibility build. The standard build needs no Wi-Fi
+configuration. Wi-Fi recovery does not deinitialize the shared Bluetooth radio.
+The relay build disables Wi-Fi power saving after enabling the station interface to avoid
+beacon/sleep delays. If that setup fails, the relay stays unavailable while the chair
+Bluetooth and USB paths continue. The 250 ms chair lease is unchanged.
+
+The matching Mac maintenance tool adds `--get-wifi 0xLOCATION`. It reads the chair's IPv4
+address, UDP port 42737 and readiness without returning network names/passwords or changing
+settings. The phone Pico is built for this exact address; reserve it in the router if it
+changes between sessions. Credential-bearing build outputs are private and must not be
+included in community source releases.
+
+The relay accepts only SCX2 format 2 right-stick axes with a fresh session/challenge and
+initial neutral transfer. It rejects left-stick, button, hat and trigger payloads. Each ACK
+follows completion of the actual combined chair USB report, including neutral phone input
+that hands back to a moving chair. The chair lease is 250 ms, with the phone refreshing it
+every 50 ms. The upstream phone bridge keeps its existing 1-second lease; a fully lost
+upstream connection can therefore take about 1.25 seconds to retire through both leases,
+plus USB propagation. A stuck USB transfer triggers the existing 350 ms endpoint recovery.
+These are software bounds, not measured radio latency guarantees.
+
+Host fixtures cover the real main polling loop, source handoff, all four phone directions,
+independent link loss, stale USB completions, maintenance and unchanged standalone behavior.
+Real Mac USB and live phone/chair tests confirmed all four phone directions, chair input,
+neutral release and source handoff. Complete combined Xbox acceptance remains a separate
+hardware check for the optional private build.
+
+
+## App, phone bridge and beginner help
+
+This chair firmware works alongside the separate [phone Wi-Fi Pico bridge](https://github.com/kortorder/simplecontroller-pico-wifi-bridge). Get [Simple Controller for iPhone](https://github.com/kortorder/simplecontroller-ios) or the [Android community preview](https://github.com/kortorder/simplecontroller-android). Both apps include an illustrated quick start and Support tabs.
+
+Read the [connection FAQ](https://github.com/kortorder/simplecontroller-ios/blob/main/FAQ.txt) and [watch the instructional videos](https://github.com/kortorder/simplecontroller-ios/releases). The free Windows PC receiver is a separate phone-to-PC route; it does not replace the chair's Bluetooth pairing. Sony Access does not accept this Pico as a USB accessory, and this project does not claim a verified PlayStation setup.

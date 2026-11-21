@@ -79,12 +79,39 @@ elseif(OMNI_APPROVED_MOUSE2_FILE)
 endif()
 # pid.codes 1209:0002 is a shared private-test ID, not unique or for distribution.
 target_compile_definitions(omni_right_stick PRIVATE
-    OMNI_USB_VID=${omni_vid} OMNI_USB_PID=${omni_pid} OMNI_USB_POWER_MA=500 CYW43_LWIP=0)
+    OMNI_USB_VID=${omni_vid} OMNI_USB_PID=${omni_pid} OMNI_USB_POWER_MA=500)
 target_link_libraries(omni_right_stick PRIVATE pico_stdlib tinyusb_device
-    pico_cyw43_arch_poll pico_btstack_classic pico_btstack_cyw43 hardware_watchdog)
+    pico_btstack_classic pico_btstack_cyw43 hardware_watchdog)
+option(OMNI_PHONE_RELAY "Receive right-stick input from the phone Pico over Wi-Fi" OFF)
+set(OMNI_WIFI_CONFIG "" CACHE FILEPATH "Private header with SC_WIFI_SSID, SC_WIFI_PASSWORD, SC_WIFI_COUNTRY")
+if(OMNI_PHONE_RELAY)
+    if(OMNI_CAPTURE_SHORT_KEY OR NOT EXISTS "${OMNI_WIFI_CONFIG}")
+        message(FATAL_ERROR "Relay needs a private OMNI_WIFI_CONFIG header and an operating (not capture) image.")
+    endif()
+    file(REAL_PATH "${OMNI_WIFI_CONFIG}" omni_config_path)
+    file(REAL_PATH "${CMAKE_CURRENT_LIST_DIR}" omni_source_path)
+    string(FIND "${omni_config_path}" "${omni_source_path}/" omni_inside_source)
+    if(omni_inside_source EQUAL 0)
+        message(FATAL_ERROR "Keep the credential-bearing header outside the public source tree.")
+    endif()
+    target_compile_definitions(omni_right_stick PRIVATE OMNI_PHONE_RELAY=1
+        OMNI_WIFI_CONFIG_HEADER="${omni_config_path}")
+    target_sources(omni_right_stick PRIVATE src/omni_phone_relay.cpp src/omni_phone_wifi.cpp
+        src/relay_protocol/scx2.cpp)
+    target_link_libraries(omni_right_stick PRIVATE pico_cyw43_arch_lwip_poll pico_rand)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${omni_config_path}")
+else()
+    target_compile_definitions(omni_right_stick PRIVATE CYW43_LWIP=0)
+    target_link_libraries(omni_right_stick PRIVATE pico_cyw43_arch_poll)
+endif()
 pico_enable_stdio_usb(omni_right_stick 0)
 pico_enable_stdio_uart(omni_right_stick 0)
 pico_set_program_name(omni_right_stick "Omni Right Stick")
 pico_set_program_description(omni_right_stick "${omni_variant_description}")
-pico_set_program_version(omni_right_stick "0.1.5")
+pico_set_program_version(omni_right_stick "0.1.6")
 pico_add_extra_outputs(omni_right_stick)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+add_custom_command(TARGET omni_right_stick POST_BUILD
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_LIST_DIR}/scripts/check-flash-boundary.py"
+            "$<TARGET_FILE_DIR:omni_right_stick>/omni_right_stick.uf2"
+    COMMENT "Checking that firmware preserves the last 8 KiB of pairing/settings flash")
