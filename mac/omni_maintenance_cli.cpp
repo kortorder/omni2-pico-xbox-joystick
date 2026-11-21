@@ -29,7 +29,7 @@ constexpr const char *usage =
     "Usage: omni-maintenance --self-test | --probe | --enter-bootsel "
     "0xLOCATION | --capture-chair-pin 0xLOCATION | "
     "--watch-chair-motion 0xLOCATION SECONDS (2..180) | --get-nudges 0xLOCATION | "
-    "--set-nudges 0xLOCATION REV RIGHT LEFT UP DOWN\n";
+    "--set-nudges 0xLOCATION REV RIGHT LEFT UP DOWN | --get-wifi 0xLOCATION\n";
 struct Target {
     io_service_t service = IO_OBJECT_NULL;
     unsigned count = 0;
@@ -386,6 +386,19 @@ std::optional<std::string> savePrivatePin(const PeerPin &pin) {
     return std::string(directory) + "/peer.bin";
 }
 
+template <class Send> std::optional<WifiReply> readWifi(Send &send) {
+    IOReturn status = 0;
+    if (operate(send, false, status) != Outcome::supported) return {};
+    WifiReply reply{};
+    IOUSBDevRequestTO req{};
+    req.bmRequestType = probe_type; req.bRequest = wifi_read_request;
+    req.wValue = request_value; req.wIndex = request_index;
+    req.wLength = reply.size(); req.pData = reply.data();
+    req.noDataTimeout = 1000; req.completionTimeout = 1500;
+    if (send(req) != kIOReturnSuccess || req.wLenDone != reply.size() || reply[0] != 1 ||
+        reply[1] > 1 || reply[2] > 5 || reply[3] || reply[10] > 1 || reply[11] > 1) return {};
+    return reply;
+}
 int selfTest() {
     unsigned passed = 0;
     auto expect = [&](bool ok) {
@@ -434,6 +447,24 @@ int selfTest() {
     sends = 0;
     fault = 4;
     expect(operate(fake, true, status) == Outcome::command_failed && sends == 2);
+    WifiReply wifiReply{1,1,3,0,192,0,2,42,166,241,1,0};
+    bool wifiShort = false, wifiFailed = false;
+    auto wifiFake = [&](IOUSBDevRequestTO &req) -> IOReturn {
+        if (req.bRequest == probe_request) return fake(req);
+        expect(req.bRequest == wifi_read_request && req.bmRequestType == probe_type &&
+               req.wLength == 12 && req.wValue == request_value && req.wIndex == request_index);
+        std::memcpy(req.pData, wifiReply.data(), wifiReply.size());
+        req.wLenDone = wifiShort ? 11 : 12;
+        return wifiFailed ? kIOReturnError : kIOReturnSuccess;
+    };
+    fault = 0;
+    expect(readWifi(wifiFake) == wifiReply);
+    wifiShort = true; expect(!readWifi(wifiFake)); wifiShort = false;
+    wifiFailed = true; expect(!readWifi(wifiFake)); wifiFailed = false;
+    wifiReply[0] = 2; expect(!readWifi(wifiFake)); wifiReply[0] = 1;
+    wifiReply[1] = 2; expect(!readWifi(wifiFake)); wifiReply[1] = 0;
+    wifiReply[2] = 6; expect(!readWifi(wifiFake)); wifiReply[2] = 0;
+    expect(readWifi(wifiFake).has_value());
     const PeerPin synthetic{0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc}; // Test-only identity.
     auto capture = [&](IOUSBDevRequestTO &req) -> IOReturn {
         if (req.bRequest == probe_request)
@@ -654,6 +685,7 @@ int main(int argc, char **argv) {
         return selfTest();
     const bool probe = argc == 2 && std::string_view(argv[1]) == "--probe";
     const bool capture = argc == 3 && std::string_view(argv[1]) == "--capture-chair-pin";
+    const bool wifi = argc == 3 && std::string_view(argv[1]) == "--get-wifi";
     const bool get = argc == 3 && std::string_view(argv[1]) == "--get-nudges";
     const bool set = argc == 8 && std::string_view(argv[1]) == "--set-nudges";
     const auto revision = set ? nudge::number(argv[3], UINT32_MAX - 1) : std::nullopt;
@@ -676,7 +708,7 @@ int main(int argc, char **argv) {
                              ? watchDuration(argv[3])
                              : std::nullopt;
     const auto expected =
-        (seconds || get || set ||
+        (seconds || get || set || wifi ||
          (argc == 3 && (capture || std::string_view(argv[1]) == "--enter-bootsel")))
             ? locationFrom(argv[2])
             : std::nullopt;
@@ -697,6 +729,16 @@ int main(int argc, char **argv) {
         return 2;
     }
     IOReturn status = 0;
+    if (wifi) {
+        auto reply = readWifi(device);
+        if (!reply) { std::fprintf(stderr, "Wi-Fi status unavailable; no settings changed.\n"); return 1; }
+        const char *states[] = {"disabled", "starting", "joining", "connected", "disconnected", "unavailable"};
+        std::printf("Phone relay: %s. Wi-Fi: %s. IPv4: %u.%u.%u.%u. Port: %u. Ready: %s. Active: %s.\n",
+            (*reply)[1] ? "enabled" : "disabled", states[(*reply)[2]],
+            (*reply)[4], (*reply)[5], (*reply)[6], (*reply)[7], unsigned(((*reply)[8] << 8) | (*reply)[9]),
+            (*reply)[10] ? "yes" : "no", (*reply)[11] ? "yes" : "no");
+        return 0;
+    }
     if (get) {
         auto settings = readNudges(device);
         if (!settings) {
