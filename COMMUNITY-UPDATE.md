@@ -6,7 +6,7 @@ Phone bridge 0.24 adds the optional shared-right-stick relay to the chair Pico w
 
 The ordinary Xbox/phone/chair route was physically checked. Shared-stick relay has real Mac USB and live-phone/chair handoff checks; complete combined Xbox acceptance remains a separate check. Zen/PlayStation and the analog circuit require their own physical validation. No private firmware or pairing data is included.
 
-Both companion apps now provide beginner picture guides, Support tabs and a connection FAQ. Instructional videos and the free Windows receiver are linked from the app repositories. Windows PC play uses receiver software and a free legacy virtual-controller driver; no Pico is needed for that route.
+Both companion apps now provide beginner picture guides, Support tabs and a connection FAQ. Instructional videos and the free Windows/Mac receiver are linked from the app repositories. Windows PC play uses receiver software and a free legacy virtual-controller driver. Mac translates existing phone controls to editable keyboard/mouse mappings; it does not provide a native analog Xbox gamepad. Neither computer route needs a Pico. This Mac help update changes no bridge firmware, pairing or nudge defaults.
 
 - iPhone: https://github.com/kortorder/simplecontroller-ios
 - Android: https://github.com/kortorder/simplecontroller-android
